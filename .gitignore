@@ -4,5 +4,5 @@ bin/
 obj/
 .vs/
 node_modules/
-./postgres/
-./monitoring/grafana/data/
+postgres/
+monitoring/grafana/data/
