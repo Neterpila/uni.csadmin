@@ -25,4 +25,12 @@ docker compose --profile monitoring up
 
 The `vote` app will be running at [http://localhost:10100](http://localhost:10100), and the `results` will be at [http://localhost:10101](http://localhost:10101).
 
-Grafana will be running at [http://localhost:10110](http://localhost:10110) (unless run without specifying the compose profile)
+
+## Metrics
+
+Grafana will be running at [http://localhost:10110](http://localhost:10110) (unless run without specifying the compose profile).
+Prometheus datasource and metrics dashboard are imported on startup.
+
+This is an example of what the dashboard should look like:
+
+![Grafana dashboad](./misc/img/grafana_dashboard_example.jpeg)
