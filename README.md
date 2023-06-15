@@ -34,3 +34,7 @@ Prometheus datasource and metrics dashboard are imported on startup.
 This is an example of what the dashboard should look like:
 
 ![Grafana dashboad](./misc/img/grafana_dashboard_example.jpeg)
+
+## Logging
+
+Kibana is running at [http://localhost:5601](http://localhost:5601). The logs are collected using Logstash, and stored in Elasticsearch. Index is created on startup, and the logs are collected from the `vote` and `result` containers.
