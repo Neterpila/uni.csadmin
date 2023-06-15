@@ -12,8 +12,8 @@ hostname = socket.gethostname()
 
 app = Flask(__name__)
 
-gunicorn_error_logger = logging.getLogger('gunicorn.error')
-app.logger.handlers.extend(gunicorn_error_logger.handlers)
+gelf_logger = logging.getLogger('gelf')
+app.logger.handlers.extend(gelf_logger.handlers)
 app.logger.setLevel(logging.INFO)
 
 def get_redis():
@@ -35,7 +35,7 @@ def hello():
         app.logger.info('Received vote for %s', vote)
         data = json.dumps({'voter_id': voter_id, 'vote': vote})
         redis.rpush('votes', data)
-
+        
     resp = make_response(render_template(
         'index.html',
         option_a=option_a,

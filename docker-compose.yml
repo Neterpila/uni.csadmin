@@ -1,7 +1,8 @@
 # version is now using "compose spec"
 # v2 and v3 are now combined!
 # docker-compose v1.27+ required
-name: csadmin
+# name: csadmin
+version: "2.1"
 
 services:
   vote:
@@ -10,6 +11,8 @@ services:
     # use python rather than gunicorn for local dev
     command: python app.py
     depends_on:
+      logstash-agent:
+        condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck: 
@@ -25,6 +28,11 @@ services:
     networks:
       - front-tier
       - back-tier
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "tcp://localhost:12201"
+        tag: "vote"
 
   result:
     container_name: result
@@ -32,6 +40,8 @@ services:
     # use nodemon rather than node for local dev
     entrypoint: nodemon server.js
     depends_on:
+      logstash-agent:
+        condition: service_healthy 
       db:
         condition: service_healthy 
     volumes:
@@ -42,18 +52,30 @@ services:
     networks:
       - front-tier
       - back-tier
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "tcp://localhost:12201"
+        tag: "result"
 
   worker:
     container_name: worker
     build:
       context: ./worker
     depends_on:
+      logstash-agent:
+        condition: service_healthy 
       redis:
         condition: service_healthy 
       db:
         condition: service_healthy 
     networks:
       - back-tier
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "tcp://localhost:12201"
+        tag: "worker"
 
   redis:
     container_name: redis
@@ -69,6 +91,9 @@ services:
   db:
     container_name: postgres
     image: postgres:15-alpine
+    depends_on:
+      logstash-agent:
+        condition: service_healthy
     environment:
       POSTGRES_USER: "postgres"
       POSTGRES_PASSWORD: "postgres"
@@ -80,6 +105,11 @@ services:
       interval: "5s"
     networks:
       - back-tier
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "tcp://localhost:12201"
+        tag: "postgres"
 
   # this service runs once to seed the database with votes
   # it won't run unless you specify the "seed" profile
@@ -89,11 +119,18 @@ services:
     build: ./seed-data
     profiles: ["seed"]
     depends_on:
+      logstash-agent:
+        condition: service_healthy
       vote:
         condition: service_healthy 
     networks:
       - front-tier
     restart: "no"
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "tcp://localhost:12201"
+        tag: "seed"
 
   # monitoring services below
   # they won't run unless you specify the "monitoring" profile
@@ -147,6 +184,68 @@ services:
     image: prom/node-exporter
     ports:
       - 10113:9100
+  
+  elasticsearch:
+    container_name: elasticsearch
+    image: elasticsearch:7.11.1
+    environment:
+      - discovery.type=single-node
+    volumes:
+      - ./elasticsearch_data/:/usr/share/elasticsearch/data
+    mem_limit: "1g"
+    networks:
+      - back-tier
+    ports:
+      - 9200:9200
+
+  logstash-agent:
+    healthcheck: 
+      test: ["CMD", "curl", "-f", "http://localhost:9600"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    image: logstash:7.11.1
+    volumes:
+      - ./logstash-agent:/etc/logstash
+    command: logstash -f /etc/logstash/logstash.conf
+    depends_on:
+      - elasticsearch
+    ports:
+      - 12201:12201
+    networks:
+      - back-tier    
+
+  kibana:
+    container_name: kibana
+    image: kibana:7.11.1
+    ports:
+      - 5601:5601
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    networks:
+      - back-tier
+    
+
+  kibana-setup:
+    container_name: kibana-setup
+    image: appropriate/curl
+    command: >
+      sh -c "sleep 40 && curl -X POST -H 'Content-Type: application/json' -H 'kbn-xsrf: true' 'http://kibana:5601/api/index_patterns/index_pattern' -d '
+      {
+        \"index_pattern\": {
+          \"title\": \"logstash-*\",
+          \"timeFieldName\": \"@timestamp\"
+        }
+      }'"
+    depends_on:
+      - kibana
+    networks:
+      - back-tier
+    
+
 
 volumes:
   db-data:
