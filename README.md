@@ -37,4 +37,8 @@ This is an example of what the dashboard should look like:
 
 ## Logging
 
-Kibana is running at [http://localhost:5601](http://localhost:5601). The logs are collected using Logstash, and stored in Elasticsearch. Index is created on startup, and the logs are collected from the `vote` and `result` containers.
+Kibana is available at [http://localhost:5601](http://localhost:5601) (unless run without specifying the compose profile). The logs are collected using Logstash, and stored in Elasticsearch. Index is created on startup, and the logs are collected from the `vote` and `result` containers.
+
+Logs themselves may be viewed and searched at Home -> Kibana -> Discover. Example:
+
+![Kibana logs](./misc/img/kibana_logs_example.jpeg)
