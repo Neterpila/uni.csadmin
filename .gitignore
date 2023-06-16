@@ -6,3 +6,4 @@ obj/
 node_modules/
 postgres/
 monitoring/grafana/data/
+monitoring/elasticsearch_data

@@ -188,10 +188,12 @@ services:
   elasticsearch:
     container_name: elasticsearch
     image: elasticsearch:7.11.1
+    profiles:
+      - monitoring
     environment:
       - discovery.type=single-node
     volumes:
-      - ./elasticsearch_data/:/usr/share/elasticsearch/data
+      - ./monitoring/elasticsearch_data/:/usr/share/elasticsearch/data
     mem_limit: "1g"
     networks:
       - back-tier
@@ -199,6 +201,7 @@ services:
       - 9200:9200
 
   logstash-agent:
+    container_name: logstash
     healthcheck: 
       test: ["CMD", "curl", "-f", "http://localhost:9600"]
       interval: 15s
@@ -206,8 +209,10 @@ services:
       retries: 3
       start_period: 40s
     image: logstash:7.11.1
+    profiles:
+      - monitoring
     volumes:
-      - ./logstash-agent:/etc/logstash
+      - ./monitoring/logstash-agent:/etc/logstash
     command: logstash -f /etc/logstash/logstash.conf
     depends_on:
       - elasticsearch
@@ -219,6 +224,8 @@ services:
   kibana:
     container_name: kibana
     image: kibana:7.11.1
+    profiles:
+      - monitoring
     ports:
       - 5601:5601
     environment:
@@ -227,25 +234,20 @@ services:
       - elasticsearch
     networks:
       - back-tier
-    
 
   kibana-setup:
     container_name: kibana-setup
     image: appropriate/curl
-    command: >
-      sh -c "sleep 40 && curl -X POST -H 'Content-Type: application/json' -H 'kbn-xsrf: true' 'http://kibana:5601/api/index_patterns/index_pattern' -d '
-      {
-        \"index_pattern\": {
-          \"title\": \"logstash-*\",
-          \"timeFieldName\": \"@timestamp\"
-        }
-      }'"
+    profiles:
+      - monitoring
+    volumes:
+      - ./monitoring/kibana/init.sh:/usr/bin/init.sh:rw
+    command: sh /usr/bin/init.sh
     depends_on:
       - kibana
     networks:
       - back-tier
     
-
 
 volumes:
   db-data:
